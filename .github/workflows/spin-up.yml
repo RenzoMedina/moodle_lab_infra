@@ -45,7 +45,7 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
       # Get public IP
-      - name: Obtener IP pública
+      - name: Get public IP
         run: |
           PUBLIC_IP=$(terraform output -raw my_ip_public)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
@@ -55,10 +55,10 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       # Update DuckDNS
-      - name: Actualizar DuckDNS
+      - name: Update DuckDNS
         run: |
           curl "https://www.duckdns.org/update?domains=${{ secrets.DUCKDNS_DOMAIN }}&token=${{ secrets.DUCKDNS_TOKEN }}&ip=${{ env.PUBLIC_IP }}"
 
-      - name: URL del staging
+      - name: URL of staging
         run: |
-          echo "✅ Staging activo en: http://${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org"
+          echo "✅ Staging active at: http://${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org"
