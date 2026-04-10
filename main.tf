@@ -115,6 +115,10 @@ resource "azurerm_linux_virtual_machine" "vm" {
     sku       = "22_04-lts"
     version   = "latest"
   }
+  custom_data = base64decode(file("${path.module}/cloud-init.yml"), {
+    duckdns_domain = var.duckdns_domain
+    duckdns_token  = var.duckdns_token
+  })
 
   tags = {
     environment = "staging"
