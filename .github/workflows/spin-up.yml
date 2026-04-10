@@ -1,0 +1,68 @@
+name: Spin-up Staging
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [plugin-deploy]
+
+jobs:
+  spin-up:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.0"
+        
+      # Terraform Init
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      # Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      # Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      # Get public IP
+      - name: Obtener IP pública
+        run: |
+          PUBLIC_IP=$(terraform output -raw public_ip)
+          echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      # Update DuckDNS
+      - name: Actualizar DuckDNS
+        run: |
+          curl "https://www.duckdns.org/update?domains=${{ secrets.DUCKDNS_DOMAIN }}&token=${{ secrets.DUCKDNS_TOKEN }}&ip=${{ env.PUBLIC_IP }}"
+
+      - name: URL del staging
+        run: |
+          echo "✅ Staging activo en: http://${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org"
