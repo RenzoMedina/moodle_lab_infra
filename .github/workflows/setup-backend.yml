@@ -10,7 +10,7 @@ jobs:
     steps:
     # Checkout the repository
     - name: Az login
-      uses: azure/login@v1
+      uses: azure/login@v3
       with:
         creds: |
           {
