@@ -26,10 +26,10 @@ jobs:
 
       - name: Validate if staging exists
         run: |
-          STATE=$(az vm show
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
-            --name ${{ secrets.AZURE_VM_NAME }}
-            --query "provisioningState"
+          STATE=$(az vm show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_VM_NAME }} \
+            --query "provisioningState" \
             --output tsv 2>/dev/null || echo "NotFound")
           echo "VM_STATE=$STATE" >> $GITHUB_ENV
 
