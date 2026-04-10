@@ -47,7 +47,7 @@ jobs:
       # Get public IP
       - name: Obtener IP pública
         run: |
-          PUBLIC_IP=$(terraform output -raw public_ip)
+          PUBLIC_IP=$(terraform output -raw public-ip)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
