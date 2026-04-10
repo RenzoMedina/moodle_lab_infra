@@ -27,7 +27,7 @@ jobs:
       - name: Validate if staging exists
         run: |
           STATE=$(az vm show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_VM }} \
             --name ${{ secrets.AZURE_VM_NAME }} \
             --query "provisioningState" \
             --output tsv 2>/dev/null || echo "NotFound")
