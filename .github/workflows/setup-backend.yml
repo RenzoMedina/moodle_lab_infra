@@ -21,21 +21,21 @@ jobs:
           }
     # Create resource group, storage account and storage container for tfstate
     - name: Create resource group to tfstate
-      run: |
-        az group create \ 
-        --name ${{ secrets.AZURE_RESOURCE_GROUP }} \
+      run: >-
+        az group create
+        --name ${{ secrets.AZURE_RESOURCE_GROUP }}
         --location ${{ secrets.AZURE_REGION }}
     # Create storage account and storage container for tfstate
     - name: Create storage account to tfstate
-      run: |
-        az storage account create \
-        --name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
-        --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-        --location ${{ secrets.AZURE_REGION }} \
+      run: >-
+        az storage account create
+        --name ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+        --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+        --location ${{ secrets.AZURE_REGION }}
         --sku Standard_LRS
     # Create storage container and blob for tfstate
     - name: Create storage container to tfstate
-      run: |
-        az storage container create \
-        --name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
-        --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+      run: >-
+        az storage container create
+        --name ${{ secrets.AZURE_STORAGE_CONTAINER }}
+        --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }}
