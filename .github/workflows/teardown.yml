@@ -25,7 +25,7 @@ jobs:
             }
 
       - name: Validate if staging exists
-        run: >-
+        run: |
           STATE=$(az vm show
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
             --name ${{ secrets.AZURE_VM_NAME }}
