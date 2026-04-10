@@ -1,0 +1,63 @@
+name: Teardown Staging
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Az login
+        uses: azure/login@v3
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Validate if staging exists
+        run: |
+          STATE=$(az vm show \
+            --resource-group moodle-lab-rg \
+            --name moodle-staging-vm \
+            --query "provisioningState" \
+            --output tsv 2>/dev/null || echo "NotFound")
+          echo "VM_STATE=$STATE" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        if: env.VM_STATE != 'NotFound'
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.12.0"
+
+      - name: Terraform Init
+        if: env.VM_STATE != 'NotFound'
+        run: terraform init
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Terraform Destroy
+        if: env.VM_STATE != 'NotFound'
+        run: terraform destroy -auto-approve
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+
+      - name: Sin VM activa
+        if: env.VM_STATE == 'NotFound'
+        run: echo "ℹ️ No hay staging activo, nada que destruir"
