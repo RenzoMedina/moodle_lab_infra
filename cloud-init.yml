@@ -63,14 +63,18 @@ write_files:
 
 runcmd:
 # Agregar repositorio PHP de Ondrej
-- echo "[LOG] Instalando dependencias base y repositorio PHP" | tee -a /var/log/cloud-init-moodle.log
-- curl -sSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/php-archive-keyring.gpg
+- echo "[LOG] Agregando repositorio PHP de Ondrej" | tee -a /var/log/cloud-init-moodle.log
+- curl -sSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/php-archive-keyring.gpg >> /var/log/cloud-init-moodle.log 2>&1
 - echo "deb [signed-by=/usr/share/keyrings/php-archive-keyring.gpg] https://packages.sury.org/php/ jammy main" > /etc/apt/sources.list.d/php.list
-- apt-get update >> /var/log/cloud-init-moodle.log 2>&1
+- DEBIAN_FRONTEND=noninteractive apt-get update >> /var/log/cloud-init-moodle.log 2>&1
 
 # Instalar PHP 8.3 y extensiones
 - echo "[LOG] Instalando PHP 8.3 y extensiones" | tee -a /var/log/cloud-init-moodle.log
-- apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-soap php8.3-opcache php8.3-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
+- DEBIAN_FRONTEND=noninteractive apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-soap php8.3-opcache php8.3-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
+
+# Verificar instalación de PHP 8.3
+- echo "[LOG] Verificando PHP 8.3" | tee -a /var/log/cloud-init-moodle.log
+- /usr/bin/php8.3 --version >> /var/log/cloud-init-moodle.log 2>&1 || echo "[ERROR] PHP 8.3 no instalado" | tee -a /var/log/cloud-init-moodle.log
 
 # Configurar Nginx
 - echo "[LOG] Configurando Nginx" | tee -a /var/log/cloud-init-moodle.log
