@@ -8,7 +8,14 @@ on:
 jobs:
   spin-up:
     runs-on: ubuntu-latest
-
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+      TF_VAR_duckdns_domain: ${{ secrets.DUCKDNS_DOMAIN }}
+      TF_VAR_duckdns_token: ${{ secrets.DUCKDNS_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -21,41 +28,21 @@ jobs:
       # Terraform Init
       - name: Terraform Init
         run: terraform init
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
       # Terraform Plan
       - name: Terraform Plan
-        run: terraform plan
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-          TF_VAR_duckdns_domain: ${{ secrets.DUCKDNS_DOMAIN }}
-          TF_VAR_duckdns_token: ${{ secrets.DUCKDNS_TOKEN }}
+        run: terraform plan -auto-approve
+        
       # Terraform Apply
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+
       # Get public IP
       - name: Get public IP
         run: |
           PUBLIC_IP=$(terraform output -raw my_ip_public)
           echo "PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
       # Update DuckDNS
       - name: Update DuckDNS
         run: |
