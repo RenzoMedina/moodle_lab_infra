@@ -1,3 +1,54 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+- nginx
+- mysql-server
+- php8.3
+- php8.3-fpm
+- php8.3-mysql
+- php8.3-xml
+- php8.3-mbstring
+- php8.3-curl
+- php8.3-zip
+- php8.3-gd
+- php8.3-intl
+- php8.3-soap
+- php8.3-xmlrpc
+- php8.3-opcache
+- git
+- unzip
+- curl
+
+write_files:
+- path: /etc/nginx/sites-available/moodle
+  content: |
+    server {
+        listen 80;
+        server_name ${duckdns_domain}.duckdns.org;
+        root /var/www/moodle;
+        index index.php;
+
+        client_max_body_size 100M;
+
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+
+        location ~ ^(.+\.php)(.*)$ {
+            fastcgi_split_path_info ^(.+\.php)(.*)$;
+            fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+        }
+
+        location ~ /\.ht {
+            deny all;
+        }
+    }
+
 - path: /opt/install-moodle.sh
   permissions: '0755'
   content: |
@@ -71,3 +122,43 @@
     chmod -R 755 $MOODLE_DIR
 
     echo ">>> Moodle instalado correctamente"
+
+- path: /opt/update-duckdns.sh
+  permissions: '0755'
+  content: |
+    #!/bin/bash
+    PUBLIC_IP=$(curl -s https://api.ipify.org)
+    curl -s "https://www.duckdns.org/update?domains=${duckdns_domain}&token=${duckdns_token}&ip=$PUBLIC_IP"
+    echo "DuckDNS actualizado con IP: $PUBLIC_IP"
+
+- path: /etc/systemd/system/duckdns.service
+  content: |
+    [Unit]
+    Description=Update DuckDNS on boot
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=/opt/update-duckdns.sh
+
+    [Install]
+    WantedBy=multi-user.target
+
+runcmd:
+- ln -sf /etc/nginx/sites-available/moodle /etc/nginx/sites-enabled/moodle
+- rm -f /etc/nginx/sites-enabled/default
+- nginx -t
+- systemctl restart nginx
+- systemctl enable nginx
+- systemctl enable php8.3-fpm
+- systemctl restart php8.3-fpm
+- systemctl enable mysql
+- systemctl start mysql
+- systemctl daemon-reload
+- systemctl enable duckdns
+- systemctl start duckdns
+- sleep 15
+- /opt/install-moodle.sh >> /var/log/moodle-install.log 2>&1
+- mysql -u root -e "UPDATE moodle.mdl_config SET value='http://${duckdns_domain}.duckdns.org' WHERE name='wwwroot';"
+- systemctl restart nginx
