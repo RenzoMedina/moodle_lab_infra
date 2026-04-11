@@ -35,6 +35,8 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+          TF_VAR_duckdns_domain: ${{ secrets.DUCKDNS_DOMAIN }}
+          TF_VAR_duckdns_token: ${{ secrets.DUCKDNS_TOKEN }}
       # Terraform Apply
       - name: Terraform Apply
         run: terraform apply -auto-approve
