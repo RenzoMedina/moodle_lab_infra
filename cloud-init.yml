@@ -1,25 +1,15 @@
 #cloud-config
+
 package_update: true
 package_upgrade: true
 
 packages:
 - nginx
 - mysql-server
-- php8.3
-- php8.3-fpm
-- php8.3-mysql
-- php8.3-xml
-- php8.3-mbstring
-- php8.3-curl
-- php8.3-zip
-- php8.3-gd
-- php8.3-intl
-- php8.3-soap
-- php8.3-xmlrpc
-- php8.3-opcache
 - git
 - unzip
 - curl
+- software-properties-common
 
 write_files:
 - path: /etc/nginx/sites-available/moodle
@@ -49,80 +39,6 @@ write_files:
         }
     }
 
-- path: /opt/install-moodle.sh
-  permissions: '0755'
-  content: |
-    #!/bin/bash
-    set -e
-
-    MOODLE_VERSION="MOODLE_405_STABLE"
-    MOODLE_DIR="/var/www/moodle"
-    MOODLE_DATA="/var/moodledata"
-    DB_NAME="moodle"
-    DB_USER="moodleuser"
-    DB_PASS="MoodlePass2026!"
-    ADMIN_USER="admin"
-    ADMIN_PASS="MoodlelabAdmin2026!"
-    ADMIN_EMAIL="admin@moodlelab.local"
-    DUCKDNS_DOMAIN="${duckdns_domain}"
-
-    echo ">>> Verificando PHP..."
-    until /usr/bin/php8.3 --version > /dev/null 2>&1; do
-      echo "Esperando PHP..."
-      sleep 5
-    done
-    echo ">>> PHP disponible"
-
-    echo ">>> Verificando MySQL..."
-    until mysqladmin ping -u root --silent; do
-      echo "Esperando MySQL..."
-      sleep 5
-    done
-    echo ">>> MySQL disponible"
-
-    echo ">>> Clonando Moodle $MOODLE_VERSION..."
-    git clone --depth=1 --branch $MOODLE_VERSION \
-      https://github.com/moodle/moodle.git $MOODLE_DIR
-
-    echo ">>> Creando directorio moodledata..."
-    mkdir -p $MOODLE_DATA
-    chown -R www-data:www-data $MOODLE_DATA
-    chmod -R 777 $MOODLE_DATA
-
-    chown -R www-data:www-data $MOODLE_DIR
-    chmod -R 755 $MOODLE_DIR
-
-    echo ">>> Configurando MySQL..."
-    mysql -u root <<EOF
-    CREATE DATABASE IF NOT EXISTS $DB_NAME DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';
-    GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';
-    FLUSH PRIVILEGES;
-    EOF
-
-    echo ">>> Instalando Moodle via CLI..."
-    /usr/bin/php8.3 $MOODLE_DIR/admin/cli/install.php \
-      --wwwroot="http://$DUCKDNS_DOMAIN.duckdns.org" \
-      --dataroot=$MOODLE_DATA \
-      --dbtype=mysqli \
-      --dbhost=localhost \
-      --dbname=$DB_NAME \
-      --dbuser=$DB_USER \
-      --dbpass=$DB_PASS \
-      --adminuser=$ADMIN_USER \
-      --adminpass=$ADMIN_PASS \
-      --adminemail=$ADMIN_EMAIL \
-      --fullname="Moodlelab Staging" \
-      --shortname="moodlelab" \
-      --non-interactive \
-      --agree-license
-
-    echo ">>> Configurando permisos finales..."
-    chown -R www-data:www-data $MOODLE_DIR
-    chmod -R 755 $MOODLE_DIR
-
-    echo ">>> Moodle instalado correctamente"
-
 - path: /opt/update-duckdns.sh
   permissions: '0755'
   content: |
@@ -146,19 +62,58 @@ write_files:
     WantedBy=multi-user.target
 
 runcmd:
+# Agregar repositorio PHP de Ondrej
+- apt-get install -y software-properties-common
+- add-apt-repository ppa:ondrej/php -y
+- apt-get update
+
+# Instalar PHP 8.3 y extensiones
+- apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-soap php8.3-opcache php8.3-xmlrpc
+
+# Configurar Nginx
 - ln -sf /etc/nginx/sites-available/moodle /etc/nginx/sites-enabled/moodle
 - rm -f /etc/nginx/sites-enabled/default
 - nginx -t
-- systemctl restart nginx
 - systemctl enable nginx
+- systemctl restart nginx
+
+# Configurar PHP-FPM
 - systemctl enable php8.3-fpm
 - systemctl restart php8.3-fpm
+
+# Configurar MySQL
 - systemctl enable mysql
 - systemctl start mysql
+
+# Activar DuckDNS
 - systemctl daemon-reload
 - systemctl enable duckdns
 - systemctl start duckdns
 - sleep 15
-- /opt/install-moodle.sh >> /var/log/moodle-install.log 2>&1
-- mysql -u root -e "UPDATE moodle.mdl_config SET value='http://${duckdns_domain}.duckdns.org' WHERE name='wwwroot';"
+
+# Clonar Moodle
+- git clone --depth=1 --branch MOODLE_405_STABLE https://github.com/moodle/moodle.git /var/www/moodle
+
+# Crear moodledata
+- mkdir -p /var/moodledata
+- chown -R www-data:www-data /var/moodledata
+- chmod -R 777 /var/moodledata
+- chown -R www-data:www-data /var/www/moodle
+- chmod -R 755 /var/www/moodle
+
+# Configurar MySQL
+- mysql -u root -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+- mysql -u root -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY 'MoodlePass2026!';"
+- mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';"
+- mysql -u root -e "FLUSH PRIVILEGES;"
+
+# Instalar Moodle via CLI
+- >-
+  /usr/bin/php8.3 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license
+
+# Permisos finales
+- chown -R www-data:www-data /var/www/moodle
+- chmod -R 755 /var/www/moodle
+
+# Reiniciar Nginx
 - systemctl restart nginx
