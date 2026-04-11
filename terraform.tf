@@ -9,12 +9,12 @@ terraform {
 
   required_version = ">= 1.1.0"
 
-backend "azurerm" {
-  resource_group_name   = "moodle-lab-tfstate-rg"
-  storage_account_name  = "moodlelabsatate"
-  container_name        = "tfstate"
-  key                   = "terraform.tfstate"
-}
+  backend "azurerm" {
+    resource_group_name  = "moodle-lab-tfstate-rg"
+    storage_account_name = "moodlelabsatate"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
 
 }
 provider "azurerm" {

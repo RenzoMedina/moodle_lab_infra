@@ -25,7 +25,7 @@ resource "azurerm_public_ip" "public-ip" {
   sku                 = "Standard"
   tags = {
     environment = "Development"
-    project    = "MoodleLab"
+    project     = "MoodleLab"
   }
 }
 
@@ -104,7 +104,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   }
 
   os_disk {
-    name = "moodle-staging-disk"
+    name                 = "moodle-staging-disk"
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }
@@ -115,13 +115,13 @@ resource "azurerm_linux_virtual_machine" "vm" {
     sku       = "22_04-lts"
     version   = "latest"
   }
-  custom_data = base64decode(file("${path.module}/cloud-init.yml"), {
+  custom_data = base64encode(templatefile("${path.module}/cloud-init.yml", {
     duckdns_domain = var.duckdns_domain
     duckdns_token  = var.duckdns_token
-  })
+  }))
 
   tags = {
     environment = "staging"
-    project    = "MoodleLab"
-    }
+    project     = "MoodleLab"
+  }
 }

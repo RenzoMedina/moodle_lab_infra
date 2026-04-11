@@ -13,7 +13,7 @@ variable "resource_name" {
 variable "ssh_public_key" {
   description = "Path to the SSH public key"
   type        = string
-  sensitive = true
+  sensitive   = true
 }
 
 variable "vm_name" {
