@@ -68,14 +68,14 @@ runcmd:
 - echo "deb [signed-by=/usr/share/keyrings/php-archive-keyring.gpg] https://packages.sury.org/php/ jammy main" > /etc/apt/sources.list.d/php.list
 - DEBIAN_FRONTEND=noninteractive apt-get update >> /var/log/cloud-init-moodle.log 2>&1
 
-# Configurar PHP-FPM para Moodle
-- echo "[LOG] Configurando PHP-FPM para Moodle" | tee -a /var/log/cloud-init-moodle.log
-- echo "max_input_vars = 5000" >> /etc/php/8.1/fpm/php.ini
-- systemctl restart php8.1-fpm
-
 # Instalar PHP 8.1 y extensiones
 - echo "[LOG] Instalando PHP 8.1 y extensiones" | tee -a /var/log/cloud-init-moodle.log
 - DEBIAN_FRONTEND=noninteractive apt-get install -y php8.1 php8.1-fpm php8.1-mysql php8.1-xml php8.1-mbstring php8.1-curl php8.1-zip php8.1-gd php8.1-intl php8.1-soap php8.1-opcache php8.1-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
+
+# Configurar PHP-FPM para Moodle
+- echo "[LOG] Configurando PHP-FPM para Moodle" | tee -a /var/log/cloud-init-moodle.log
+- echo "max_input_vars = 5000" >> /etc/php/8.1/fpm/php.ini
+- systemctl restart php8.1-fpm >> /var/log/cloud-init-moodle.log 2>&1
 
 # Verificar instalación de PHP 8.1
 - echo "[LOG] Verificando PHP 8.1" | tee -a /var/log/cloud-init-moodle.log
