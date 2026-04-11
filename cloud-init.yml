@@ -63,38 +63,46 @@ write_files:
 
 runcmd:
 # Agregar repositorio PHP de Ondrej
-- apt-get install -y software-properties-common
-- add-apt-repository ppa:ondrej/php -y
-- apt-get update
+- echo "[LOG] Instalando dependencias base y repositorio PHP" | tee -a /var/log/cloud-init-moodle.log
+- apt-get install -y software-properties-common >> /var/log/cloud-init-moodle.log 2>&1
+- add-apt-repository ppa:ondrej/php -y >> /var/log/cloud-init-moodle.log 2>&1
+- apt-get update >> /var/log/cloud-init-moodle.log 2>&1
 
 # Instalar PHP 8.3 y extensiones
-- apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-soap php8.3-opcache php8.3-xmlrpc
+- echo "[LOG] Instalando PHP 8.3 y extensiones" | tee -a /var/log/cloud-init-moodle.log
+- apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-soap php8.3-opcache php8.3-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
 
 # Configurar Nginx
+- echo "[LOG] Configurando Nginx" | tee -a /var/log/cloud-init-moodle.log
 - ln -sf /etc/nginx/sites-available/moodle /etc/nginx/sites-enabled/moodle
 - rm -f /etc/nginx/sites-enabled/default
-- nginx -t
-- systemctl enable nginx
-- systemctl restart nginx
+- nginx -t >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl enable nginx >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl restart nginx >> /var/log/cloud-init-moodle.log 2>&1
 
 # Configurar PHP-FPM
-- systemctl enable php8.3-fpm
-- systemctl restart php8.3-fpm
+- echo "[LOG] Configurando PHP-FPM" | tee -a /var/log/cloud-init-moodle.log
+- systemctl enable php8.3-fpm >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl restart php8.3-fpm >> /var/log/cloud-init-moodle.log 2>&1
 
 # Configurar MySQL
-- systemctl enable mysql
-- systemctl start mysql
+- echo "[LOG] Configurando MySQL" | tee -a /var/log/cloud-init-moodle.log
+- systemctl enable mysql >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl start mysql >> /var/log/cloud-init-moodle.log 2>&1
 
 # Activar DuckDNS
+- echo "[LOG] Activando DuckDNS" | tee -a /var/log/cloud-init-moodle.log
 - systemctl daemon-reload
-- systemctl enable duckdns
-- systemctl start duckdns
+- systemctl enable duckdns >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl start duckdns >> /var/log/cloud-init-moodle.log 2>&1
 - sleep 15
 
 # Clonar Moodle
-- git clone --depth=1 --branch MOODLE_405_STABLE https://github.com/moodle/moodle.git /var/www/moodle
+- echo "[LOG] Clonando Moodle" | tee -a /var/log/cloud-init-moodle.log
+- git clone --depth=1 --branch MOODLE_405_STABLE https://github.com/moodle/moodle.git /var/www/moodle >> /var/log/cloud-init-moodle.log 2>&1
 
 # Crear moodledata
+- echo "[LOG] Creando directorio moodledata y ajustando permisos" | tee -a /var/log/cloud-init-moodle.log
 - mkdir -p /var/moodledata
 - chown -R www-data:www-data /var/moodledata
 - chmod -R 777 /var/moodledata
@@ -102,18 +110,22 @@ runcmd:
 - chmod -R 755 /var/www/moodle
 
 # Configurar MySQL
-- mysql -u root -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-- mysql -u root -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY 'MoodlePass2026!';"
-- mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';"
-- mysql -u root -e "FLUSH PRIVILEGES;"
+- echo "[LOG] Configurando base de datos Moodle" | tee -a /var/log/cloud-init-moodle.log
+- mysql -u root -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >> /var/log/cloud-init-moodle.log 2>&1
+- mysql -u root -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY 'MoodlePass2026!';" >> /var/log/cloud-init-moodle.log 2>&1
+- mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';" >> /var/log/cloud-init-moodle.log 2>&1
+- mysql -u root -e "FLUSH PRIVILEGES;" >> /var/log/cloud-init-moodle.log 2>&1
 
 # Instalar Moodle via CLI
-- >-
-  /usr/bin/php8.3 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license
+- echo "[LOG] Instalando Moodle via CLI" | tee -a /var/log/cloud-init-moodle.log
+- /usr/bin/php8.3 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license >> /var/log/cloud-init-moodle.log 2>&1
+- if [ $? -ne 0 ]; then echo "[ERROR] Falló la instalación de Moodle. Revisa /var/log/cloud-init-moodle.log" | tee -a /var/log/cloud-init-moodle.log; fi
 
 # Permisos finales
+- echo "[LOG] Ajustando permisos finales" | tee -a /var/log/cloud-init-moodle.log
 - chown -R www-data:www-data /var/www/moodle
 - chmod -R 755 /var/www/moodle
 
 # Reiniciar Nginx
-- systemctl restart nginx
+- echo "[LOG] Reiniciando Nginx" | tee -a /var/log/cloud-init-moodle.log
+- systemctl restart nginx >> /var/log/cloud-init-moodle.log 2>&1
