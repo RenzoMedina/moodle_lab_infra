@@ -28,7 +28,7 @@ write_files:
 
         location ~ ^(.+\.php)(.*)$ {
             fastcgi_split_path_info ^(.+\.php)(.*)$;
-            fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+            fastcgi_pass unix:/run/php/php8.1-fpm.sock;
             fastcgi_index index.php;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
             include fastcgi_params;
@@ -68,13 +68,13 @@ runcmd:
 - echo "deb [signed-by=/usr/share/keyrings/php-archive-keyring.gpg] https://packages.sury.org/php/ jammy main" > /etc/apt/sources.list.d/php.list
 - DEBIAN_FRONTEND=noninteractive apt-get update >> /var/log/cloud-init-moodle.log 2>&1
 
-# Instalar PHP 8.3 y extensiones
-- echo "[LOG] Instalando PHP 8.3 y extensiones" | tee -a /var/log/cloud-init-moodle.log
-- DEBIAN_FRONTEND=noninteractive apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl php8.3-zip php8.3-gd php8.3-intl php8.3-soap php8.3-opcache php8.3-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
+# Instalar PHP 8.1 y extensiones
+- echo "[LOG] Instalando PHP 8.1 y extensiones" | tee -a /var/log/cloud-init-moodle.log
+- DEBIAN_FRONTEND=noninteractive apt-get install -y php8.1 php8.1-fpm php8.1-mysql php8.1-xml php8.1-mbstring php8.1-curl php8.1-zip php8.1-gd php8.1-intl php8.1-soap php8.1-opcache php8.1-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
 
-# Verificar instalación de PHP 8.3
-- echo "[LOG] Verificando PHP 8.3" | tee -a /var/log/cloud-init-moodle.log
-- /usr/bin/php8.3 --version >> /var/log/cloud-init-moodle.log 2>&1 || echo "[ERROR] PHP 8.3 no instalado" | tee -a /var/log/cloud-init-moodle.log
+# Verificar instalación de PHP 8.1
+- echo "[LOG] Verificando PHP 8.1" | tee -a /var/log/cloud-init-moodle.log
+- /usr/bin/php8.1 --version >> /var/log/cloud-init-moodle.log 2>&1 || echo "[ERROR] PHP 8.1 no instalado" | tee -a /var/log/cloud-init-moodle.log
 
 # Configurar Nginx
 - echo "[LOG] Configurando Nginx" | tee -a /var/log/cloud-init-moodle.log
@@ -86,8 +86,8 @@ runcmd:
 
 # Configurar PHP-FPM
 - echo "[LOG] Configurando PHP-FPM" | tee -a /var/log/cloud-init-moodle.log
-- systemctl enable php8.3-fpm >> /var/log/cloud-init-moodle.log 2>&1
-- systemctl restart php8.3-fpm >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl enable php8.1-fpm >> /var/log/cloud-init-moodle.log 2>&1
+- systemctl restart php8.1-fpm >> /var/log/cloud-init-moodle.log 2>&1
 
 # Configurar MySQL
 - echo "[LOG] Configurando MySQL" | tee -a /var/log/cloud-init-moodle.log
@@ -122,7 +122,7 @@ runcmd:
 
 # Instalar Moodle via CLI
 - echo "[LOG] Instalando Moodle via CLI" | tee -a /var/log/cloud-init-moodle.log
-- /usr/bin/php8.3 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license >> /var/log/cloud-init-moodle.log 2>&1
+- /usr/bin/php8.1 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license >> /var/log/cloud-init-moodle.log 2>&1
 - if [ $? -ne 0 ]; then echo "[ERROR] Falló la instalación de Moodle. Revisa /var/log/cloud-init-moodle.log" | tee -a /var/log/cloud-init-moodle.log; fi
 
 # Permisos finales
