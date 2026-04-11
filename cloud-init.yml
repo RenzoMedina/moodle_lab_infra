@@ -62,18 +62,10 @@ write_files:
     WantedBy=multi-user.target
 
 runcmd:
-# Actualizar e instalar dependencias
-- echo "[LOG] Actualizando sistema e instalando dependencias" | tee -a /var/log/cloud-init-moodle.log
-- apt-get update >> /var/log/cloud-init-moodle.log 2>&1
-- apt-get upgrade -y >> /var/log/cloud-init-moodle.log 2>&1
-- apt-get install -y software-properties-common >> /var/log/cloud-init-moodle.log 2>&1
-- add-apt-repository ppa:ondrej/php -y >> /var/log/cloud-init-moodle.log 2>&1
-- apt-get update >> /var/log/cloud-init-moodle.log 2>&1
-
 # Agregar repositorio PHP de Ondrej
 - echo "[LOG] Instalando dependencias base y repositorio PHP" | tee -a /var/log/cloud-init-moodle.log
-- apt-get install -y software-properties-common >> /var/log/cloud-init-moodle.log 2>&1
-- add-apt-repository ppa:ondrej/php -y >> /var/log/cloud-init-moodle.log 2>&1
+- DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common >> /var/log/cloud-init-moodle.log 2>&1
+- DEBIAN_FRONTEND=noninteractive add-apt-repository ppa:ondrej/php -y >> /var/log/cloud-init-moodle.log 2>&1
 - apt-get update >> /var/log/cloud-init-moodle.log 2>&1
 
 # Instalar PHP 8.3 y extensiones
