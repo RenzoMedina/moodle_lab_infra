@@ -109,9 +109,11 @@ runcmd:
   - echo "[LOG] Creando moodledata y ajustando permisos" | tee -a /var/log/cloud-init-moodle.log
   - mkdir -p /var/moodledata
   - chown -R www-data:www-data /var/moodledata
-  - chmod -R 770 /var/moodledata
+  - find /var/moodledata -type d -exec chmod 770 {} \;
+  - find /var/moodledata -type f -exec chmod 660 {} \;
   - chown -R www-data:www-data /var/www/moodle
-  - chmod -R 755 /var/www/moodle
+  - find /var/www/moodle -type d -exec chmod 755 {} \;
+  - find /var/www/moodle -type f -exec chmod 644 {} \;
 
   # Configurar MySQL
   - echo "[LOG] Configurando base de datos Moodle" | tee -a /var/log/cloud-init-moodle.log
