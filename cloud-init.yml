@@ -4,137 +4,137 @@ package_update: true
 package_upgrade: true
 
 packages:
-- nginx
-- mysql-server
-- git
-- unzip
-- curl
-- software-properties-common
+  - nginx
+  - mysql-server
+  - git
+  - unzip
+  - curl
+  - software-properties-common
 
 write_files:
-- path: /etc/nginx/sites-available/moodle
-  content: |
-    server {
-        listen 80;
-        server_name ${duckdns_domain}.duckdns.org;
-        root /var/www/moodle;
-        index index.php;
+  - path: /etc/nginx/sites-available/moodle
+    content: |
+        server {
+            listen 80;
+            server_name ${duckdns_domain}.duckdns.org;
+            root /var/www/moodle;
+            index index.php;
 
-        client_max_body_size 100M;
+            client_max_body_size 100M;
 
-        location / {
-            try_files $uri $uri/ /index.php?$query_string;
+            location / {
+                try_files $uri $uri/ /index.php?$query_string;
+            }
+
+            location ~ ^(.+\.php)(.*)$ {
+                fastcgi_split_path_info ^(.+\.php)(.*)$;
+                fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+                fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                include fastcgi_params;
+            }
+
+            location ~ /\.ht {
+                deny all;
+            }
         }
 
-        location ~ ^(.+\.php)(.*)$ {
-            fastcgi_split_path_info ^(.+\.php)(.*)$;
-            fastcgi_pass unix:/run/php/php8.1-fpm.sock;
-            fastcgi_index index.php;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            include fastcgi_params;
-        }
+  - path: /opt/update-duckdns.sh
+    permissions: '0755'
+    content: |
+        #!/bin/bash
+        PUBLIC_IP=$(curl -s https://api.ipify.org)
+        curl -s "https://www.duckdns.org/update?domains=${duckdns_domain}&token=${duckdns_token}&ip=$PUBLIC_IP"
+        echo "DuckDNS actualizado con IP: $PUBLIC_IP"
 
-        location ~ /\.ht {
-            deny all;
-        }
-    }
+  - path: /etc/systemd/system/duckdns.service
+    content: |
+        [Unit]
+        Description=Update DuckDNS on boot
+        After=network-online.target
+        Wants=network-online.target
 
-- path: /opt/update-duckdns.sh
-  permissions: '0755'
-  content: |
-    #!/bin/bash
-    PUBLIC_IP=$(curl -s https://api.ipify.org)
-    curl -s "https://www.duckdns.org/update?domains=${duckdns_domain}&token=${duckdns_token}&ip=$PUBLIC_IP"
-    echo "DuckDNS actualizado con IP: $PUBLIC_IP"
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/update-duckdns.sh
 
-- path: /etc/systemd/system/duckdns.service
-  content: |
-    [Unit]
-    Description=Update DuckDNS on boot
-    After=network-online.target
-    Wants=network-online.target
-
-    [Service]
-    Type=oneshot
-    ExecStart=/opt/update-duckdns.sh
-
-    [Install]
-    WantedBy=multi-user.target
+        [Install]
+        WantedBy=multi-user.target
 
 runcmd:
-# Agregar repositorio PHP de Ondrej
-- echo "[LOG] Agregando repositorio PHP de Ondrej" | tee -a /var/log/cloud-init-moodle.log
-- curl -sSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/php-archive-keyring.gpg >> /var/log/cloud-init-moodle.log 2>&1
-- echo "deb [signed-by=/usr/share/keyrings/php-archive-keyring.gpg] https://packages.sury.org/php/ jammy main" > /etc/apt/sources.list.d/php.list
-- DEBIAN_FRONTEND=noninteractive apt-get update >> /var/log/cloud-init-moodle.log 2>&1
+  # Agregar repositorio PHP de Ondrej, instalar PHP 8.1,extension y configurar PHP-FPM
+  - echo "[LOG] Instalando PHP 8.1 y extensiones" | tee -a /var/log/cloud-init-moodle.log
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y php8.1 php8.1-fpm php8.1-mysql php8.1-xml php8.1-mbstring php8.1-curl php8.1-zip php8.1-gd php8.1-intl php8.1-soap php8.1-opcache php8.1-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
 
-# Instalar PHP 8.1 y extensiones
-- echo "[LOG] Instalando PHP 8.1 y extensiones" | tee -a /var/log/cloud-init-moodle.log
-- DEBIAN_FRONTEND=noninteractive apt-get install -y php8.1 php8.1-fpm php8.1-mysql php8.1-xml php8.1-mbstring php8.1-curl php8.1-zip php8.1-gd php8.1-intl php8.1-soap php8.1-opcache php8.1-xmlrpc >> /var/log/cloud-init-moodle.log 2>&1
+  # Configurar PHP-FPM para Moodle
+  - echo "[LOG] Configurando PHP" | tee -a /var/log/cloud-init-moodle.log
+  - echo "max_input_vars = 5000" >> /etc/php/8.1/fpm/php.ini
+  - echo "max_input_vars = 5000" >> /etc/php/8.1/cli/php.ini
+  - systemctl enable php8.1-fpm
+  - systemctl restart php8.1-fpm
 
-# Configurar PHP-FPM para Moodle
-- echo "[LOG] Configurando PHP-FPM para Moodle" | tee -a /var/log/cloud-init-moodle.log
-- echo "max_input_vars = 5000" >> /etc/php/8.1/fpm/php.ini
-- systemctl restart php8.1-fpm >> /var/log/cloud-init-moodle.log 2>&1
+  # Verificar instalación de PHP 8.1
+  - echo "[LOG] Verificando PHP 8.1" | tee -a /var/log/cloud-init-moodle.log
+  - /usr/bin/php8.1 --version >> /var/log/cloud-init-moodle.log 2>&1 || echo "[ERROR] PHP 8.1 no instalado" | tee -a /var/log/cloud-init-moodle.log
 
-# Verificar instalación de PHP 8.1
-- echo "[LOG] Verificando PHP 8.1" | tee -a /var/log/cloud-init-moodle.log
-- /usr/bin/php8.1 --version >> /var/log/cloud-init-moodle.log 2>&1 || echo "[ERROR] PHP 8.1 no instalado" | tee -a /var/log/cloud-init-moodle.log
+  # Configurar Nginx
+  - echo "[LOG] Configurando Nginx" | tee -a /var/log/cloud-init-moodle.log
+  - ln -sf /etc/nginx/sites-available/moodle /etc/nginx/sites-enabled/moodle
+  - rm -f /etc/nginx/sites-enabled/default
+  - nginx -t >> /var/log/cloud-init-moodle.log 2>&1
+  - systemctl enable nginx
+  - systemctl restart nginx
 
-# Configurar Nginx
-- echo "[LOG] Configurando Nginx" | tee -a /var/log/cloud-init-moodle.log
-- ln -sf /etc/nginx/sites-available/moodle /etc/nginx/sites-enabled/moodle
-- rm -f /etc/nginx/sites-enabled/default
-- nginx -t >> /var/log/cloud-init-moodle.log 2>&1
-- systemctl enable nginx >> /var/log/cloud-init-moodle.log 2>&1
-- systemctl restart nginx >> /var/log/cloud-init-moodle.log 2>&1
+  # Configurar MySQL
+  - echo "[LOG] Configurando MySQL" | tee -a /var/log/cloud-init-moodle.log
+  - systemctl enable mysql
+  - systemctl start mysql
+  - mysql -u root -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >> /var/log/cloud-init-moodle.log 2>&1
+  - mysql -u root -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY 'MoodlePass2026!';" >> /var/log/cloud-init-moodle.log 2>&1
+  - mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';" >> /var/log/cloud-init-moodle.log 2>&1
+  - mysql -u root -e "FLUSH PRIVILEGES;" >> /var/log/cloud-init-moodle.log 2>&1
 
-# Configurar PHP-FPM
-- echo "[LOG] Configurando PHP-FPM" | tee -a /var/log/cloud-init-moodle.log
-- systemctl enable php8.1-fpm >> /var/log/cloud-init-moodle.log 2>&1
-- systemctl restart php8.1-fpm >> /var/log/cloud-init-moodle.log 2>&1
+  # Activar DuckDNS
+  - echo "[LOG] Activando DuckDNS" | tee -a /var/log/cloud-init-moodle.log
+  - systemctl daemon-reload
+  - systemctl enable duckdns
+  - systemctl start duckdns
+  - sleep 15
 
-# Configurar MySQL
-- echo "[LOG] Configurando MySQL" | tee -a /var/log/cloud-init-moodle.log
-- systemctl enable mysql >> /var/log/cloud-init-moodle.log 2>&1
-- systemctl start mysql >> /var/log/cloud-init-moodle.log 2>&1
+  # Clonar Moodle
+  - echo "[LOG] Clonando Moodle" | tee -a /var/log/cloud-init-moodle.log
+  - git clone --depth=1 --branch MOODLE_405_STABLE https://github.com/moodle/moodle.git /var/www/moodle >> /var/log/cloud-init-moodle.log 2>&1
 
-# Activar DuckDNS
-- echo "[LOG] Activando DuckDNS" | tee -a /var/log/cloud-init-moodle.log
-- systemctl daemon-reload
-- systemctl enable duckdns >> /var/log/cloud-init-moodle.log 2>&1
-- systemctl start duckdns >> /var/log/cloud-init-moodle.log 2>&1
-- sleep 15
+  # Permisos previos a la instalación
+  - echo "[LOG] Creando moodledata y ajustando permisos" | tee -a /var/log/cloud-init-moodle.log
+  - mkdir -p /var/moodledata
+  - chown -R www-data:www-data /var/moodledata
+  - chmod -R 777 /var/moodledata
+  - chown -R www-data:www-data /var/www/moodle
+  - chmod -R 755 /var/www/moodle
 
-# Clonar Moodle
-- echo "[LOG] Clonando Moodle" | tee -a /var/log/cloud-init-moodle.log
-- git clone --depth=1 --branch MOODLE_405_STABLE https://github.com/moodle/moodle.git /var/www/moodle >> /var/log/cloud-init-moodle.log 2>&1
+  # Configurar MySQL
+  - echo "[LOG] Configurando base de datos Moodle" | tee -a /var/log/cloud-init-moodle.log
+  - mysql -u root -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >> /var/log/cloud-init-moodle.log 2>&1
+  - mysql -u root -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY 'MoodlePass2026!';" >> /var/log/cloud-init-moodle.log 2>&1
+  - mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';" >> /var/log/cloud-init-moodle.log 2>&1
+  - mysql -u root -e "FLUSH PRIVILEGES;" >> /var/log/cloud-init-moodle.log 2>&1
 
-# Crear moodledata
-- echo "[LOG] Creando directorio moodledata y ajustando permisos" | tee -a /var/log/cloud-init-moodle.log
-- mkdir -p /var/moodledata
-- chown -R www-data:www-data /var/moodledata
-- chmod -R 777 /var/moodledata
-- chown -R www-data:www-data /var/www/moodle
-- chmod -R 755 /var/www/moodle
+  # Instalar Moodle via CLI
+  - echo "[LOG] Instalando Moodle via CLI" | tee -a /var/log/cloud-init-moodle.log
+  - sudo -u www-data /usr/bin/php8.1 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license >> /var/log/cloud-init-moodle.log 2>&1
+  - if [ $? -ne 0 ]; then echo "[ERROR] Falló la instalación de Moodle" | tee -a /var/log/cloud-init-moodle.log; fi
 
-# Configurar MySQL
-- echo "[LOG] Configurando base de datos Moodle" | tee -a /var/log/cloud-init-moodle.log
-- mysql -u root -e "CREATE DATABASE IF NOT EXISTS moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >> /var/log/cloud-init-moodle.log 2>&1
-- mysql -u root -e "CREATE USER IF NOT EXISTS 'moodleuser'@'localhost' IDENTIFIED BY 'MoodlePass2026!';" >> /var/log/cloud-init-moodle.log 2>&1
-- mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';" >> /var/log/cloud-init-moodle.log 2>&1
-- mysql -u root -e "FLUSH PRIVILEGES;" >> /var/log/cloud-init-moodle.log 2>&1
+  # Permisos finales
+  - echo "[LOG] Ajustando permisos finales" | tee -a /var/log/cloud-init-moodle.log
+  - chown -R www-data:www-data /var/www/moodle
+  - chmod -R 755 /var/www/moodle
+  - chown www-data:www-data /var/www/moodle/config.php
+  - chmod 644 /var/www/moodle/config.php
 
-# Instalar Moodle via CLI
-- echo "[LOG] Instalando Moodle via CLI" | tee -a /var/log/cloud-init-moodle.log
-- /usr/bin/php8.1 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license >> /var/log/cloud-init-moodle.log 2>&1
-- if [ $? -ne 0 ]; then echo "[ERROR] Falló la instalación de Moodle. Revisa /var/log/cloud-init-moodle.log" | tee -a /var/log/cloud-init-moodle.log; fi
+  # Reiniciar servicios
+  - echo "[LOG] Reiniciando servicios" | tee -a /var/log/cloud-init-moodle.log
+  - systemctl restart php8.1-fpm
+  - systemctl restart nginx
 
-# Permisos finales
-- echo "[LOG] Ajustando permisos finales" | tee -a /var/log/cloud-init-moodle.log
-- chown -R www-data:www-data /var/www/moodle
-- chmod -R 755 /var/www/moodle
-
-# Reiniciar Nginx
-- echo "[LOG] Reiniciando Nginx" | tee -a /var/log/cloud-init-moodle.log
-- systemctl restart nginx >> /var/log/cloud-init-moodle.log 2>&1
+  - echo "[LOG] Instalación completada" | tee -a /var/log/cloud-init-moodle.log
