@@ -109,7 +109,7 @@ runcmd:
   - echo "[LOG] Creando moodledata y ajustando permisos" | tee -a /var/log/cloud-init-moodle.log
   - mkdir -p /var/moodledata
   - chown -R www-data:www-data /var/moodledata
-  - chmod -R 777 /var/moodledata
+  - chmod -R 770 /var/moodledata
   - chown -R www-data:www-data /var/www/moodle
   - chmod -R 755 /var/www/moodle
 
