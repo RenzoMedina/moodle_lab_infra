@@ -120,10 +120,10 @@ runcmd:
   - mysql -u root -e "GRANT ALL PRIVILEGES ON moodle.* TO 'moodleuser'@'localhost';" >> /var/log/cloud-init-moodle.log 2>&1
   - mysql -u root -e "FLUSH PRIVILEGES;" >> /var/log/cloud-init-moodle.log 2>&1
 
-  # Instalar Moodle via CLI
-  - echo "[LOG] Instalando Moodle via CLI" | tee -a /var/log/cloud-init-moodle.log
-  - sudo -u www-data /usr/bin/php8.1 /var/www/moodle/admin/cli/install.php --wwwroot="http://${duckdns_domain}.duckdns.org" --dataroot=/var/moodledata --dbtype=mysqli --dbhost=localhost --dbname=moodle --dbuser=moodleuser --dbpass=MoodlePass2026! --adminuser=admin --adminpass=MoodlelabAdmin2026! --adminemail=admin@moodlelab.local --fullname="Moodlelab Staging" --shortname="moodlelab" --non-interactive --agree-license >> /var/log/cloud-init-moodle.log 2>&1
-  - if [ $? -ne 0 ]; then echo "[ERROR] Falló la instalación de Moodle" | tee -a /var/log/cloud-init-moodle.log; fi
+  # Forzar wizard de instalación web de Moodle
+  - echo "[LOG] Forzando wizard de instalación de Moodle (eliminando config.php y base de datos)" | tee -a /var/log/cloud-init-moodle.log
+  - rm -f /var/www/moodle/config.php
+  - mysql -u root -e "DROP DATABASE IF EXISTS moodle; CREATE DATABASE moodle DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >> /var/log/cloud-init-moodle.log 2>&1
 
   # Permisos finales
   - echo "[LOG] Ajustando permisos finales" | tee -a /var/log/cloud-init-moodle.log
