@@ -4,21 +4,21 @@ resource "azurerm_resource_group" "rg" {
 }
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "moodle-staging-vnet"
+  name                = "moodle-lab-vnet"
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 }
 
 resource "azurerm_subnet" "subnet" {
-  name                 = "moodle-staging-subnet"
+  name                 = "moodle-lab-subnet"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
 }
 
 resource "azurerm_public_ip" "public-ip" {
-  name                = "moodle-staging-public-ip"
+  name                = "moodle-lab-public-ip"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
@@ -30,12 +30,12 @@ resource "azurerm_public_ip" "public-ip" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  name                = "moodle-staging-nic"
+  name                = "moodle-lab-nic"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
-    name                          = "moodle-staging-nic-config"
+    name                          = "moodle-lab-nic-config"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.public-ip.id
@@ -43,7 +43,7 @@ resource "azurerm_network_interface" "nic" {
 }
 
 resource "azurerm_network_security_group" "nsg" {
-  name                = "moodle-staging-nsg"
+  name                = "moodle-lab-nsg"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
@@ -104,7 +104,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   }
 
   os_disk {
-    name                 = "moodle-staging-disk"
+    name                 = "moodle-lab-disk"
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }
