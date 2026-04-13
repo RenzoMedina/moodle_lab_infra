@@ -14,30 +14,38 @@ packages:
 write_files:
   - path: /etc/nginx/sites-available/moodle
     content: |
-        server {
-            listen 80;
-            server_name ${duckdns_domain}.duckdns.org;
-            root /var/www/moodle;
-            index index.php;
+      server {
+        listen 80;
+        server_name ${duckdns_domain}.duckdns.org;
+        root /var/www/moodle;
+        index index.php;
 
-            client_max_body_size 100M;
+        client_max_body_size 100M;
 
-            location / {
-                try_files $uri $uri/ /index.php?$query_string;
-            }
-
-            location ~ ^(.+\.php)(.*)$ {
-                fastcgi_split_path_info ^(.+\.php)(.*)$;
-                fastcgi_pass unix:/run/php/php8.1-fpm.sock;
-                fastcgi_index index.php;
-                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-                include fastcgi_params;
-            }
-
-            location ~ /\.ht {
-                deny all;
-            }
+        location / {
+          try_files $uri $uri/ /index.php?$query_string;
         }
+
+        # Bloque para servir archivos estáticos correctamente
+        location ~* \.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$ {
+          try_files $uri =404;
+          expires 1M;
+          access_log off;
+          add_header Cache-Control "public";
+        }
+
+        location ~ ^(.+\.php)(.*)$ {
+          fastcgi_split_path_info ^(.+\.php)(.*)$;
+          fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+          fastcgi_index index.php;
+          fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          include fastcgi_params;
+        }
+
+        location ~ /\.ht {
+          deny all;
+        }
+      }
 
   - path: /opt/update-duckdns.sh
     permissions: '0755'
