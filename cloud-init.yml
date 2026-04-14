@@ -137,6 +137,14 @@ runcmd:
   - chown www-data:www-data /var/www/moodle/config.php
   - chmod 644 /var/www/moodle/config.php
 
+  # Configurar PHP para Moodle
+  - echo "[LOG] Configurando PHP para Moodle" | tee -a /var/log/cloud-init-moodle.log
+  - sed -i 's/upload_max_filesize = .*/upload_max_filesize = 50M/' /etc/php/8.1/fpm/php.ini
+  - sed -i 's/post_max_size = .*/post_max_size = 50M/' /etc/php/8.1/fpm/php.ini
+  - sed -i 's/memory_limit = .*/memory_limit = 256M/' /etc/php/8.1/fpm/php.ini
+  - sed -i 's/max_execution_time = .*/max_execution_time = 300/' /etc/php/8.1/fpm/php.ini
+  - sed -i 's/max_input_time = .*/max_input_time = 300/' /etc/php/8.1/fpm/php.ini
+
   # Reiniciar servicios
   - echo "[LOG] Reiniciando servicios" | tee -a /var/log/cloud-init-moodle.log
   - systemctl restart php8.1-fpm
