@@ -39,3 +39,9 @@ variable "duckdns_token" {
   type        = string
   sensitive   = true
 }
+
+variable "use_snapshots" {
+  description = "Whether to use snapshots for backup"
+  type        = bool
+  default     = false
+}

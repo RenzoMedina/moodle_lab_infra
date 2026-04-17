@@ -2,6 +2,15 @@ name: Spin-up Staging
 
 on:
   workflow_dispatch:
+    inputs:
+      use_snapshots:
+        description: 'Whether to use snapshots for backup'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
   repository_dispatch:
     types: [plugin-deploy]
 
@@ -16,6 +25,8 @@ jobs:
       TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
       TF_VAR_duckdns_domain: ${{ secrets.DUCKDNS_DOMAIN }}
       TF_VAR_duckdns_token: ${{ secrets.DUCKDNS_TOKEN }}
+      TF_VAR_use_snapshots: ${{ github.event.inputs.use_snapshots }}
+      TF_VAR_snapshot_name: ${{ secrets.AZURE_SNAPSHOT_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
