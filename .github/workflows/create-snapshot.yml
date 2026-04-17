@@ -19,10 +19,10 @@ jobs:
             }
 
       - name: Create snapshot of staging database
-        run: >-
-          az snapshot create
-            --name ${{ secrets.AZURE_SNAPSHOT_NAME }}
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_VM }}
-            --source ${{ secrets.AZURE_DISK_NAME }}
+        run: |
+          az snapshot create \
+            --name ${{ secrets.AZURE_SNAPSHOT_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_VM }} \
+            --source ${{ secrets.AZURE_DISK_NAME }} \
             --location ${{ secrets.AZURE_REGION }}
           echo "Snapshot created successfully"
