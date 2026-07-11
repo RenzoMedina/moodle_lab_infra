@@ -50,6 +50,52 @@ This repository contains the Terraform code to set up the infrastructure for the
 6. Follow the prompts to confirm the deployment.
 7. Monitor the deployment process and access the Moodle instance once the deployment is complete.
 
+## 🔐 Required GitHub Secrets
+
+Before running any workflow, configure these secrets in **Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+|---|---|
+| `AZURE_CLIENT_ID` | Service Principal client ID |
+| `AZURE_CLIENT_SECRET` | Service Principal client secret |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+| `AZURE_TENANT_ID` | Azure AD tenant ID |
+| `AZURE_REGION` | Azure region (e.g. `eastus`) |
+| `AZURE_RESOURCE_GROUP` | Resource group for the Terraform state backend |
+| `AZURE_STORAGE_ACCOUNT` | Storage account name for the `tfstate` |
+| `AZURE_STORAGE_CONTAINER` | Storage container name for the `tfstate` |
+| `AZURE_RESOURCE_GROUP_VM` | Resource group where the Moodle VM is deployed |
+| `AZURE_VM_NAME` | Name of the Moodle VM |
+| `AZURE_DISK_NAME` | Name of the VM's OS disk |
+| `AZURE_SNAPSHOT_NAME` | Name to assign to the disk snapshot |
+| `AZURE_SNAPSHOT_RESOURCE_GROUP` | **Persistent** resource group where snapshots are stored (must be different from `AZURE_RESOURCE_GROUP_VM`) |
+| `SSH_PUBLIC_KEY` | SSH public key injected into the VM |
+| `DUCKDNS_DOMAIN` | DuckDNS subdomain |
+| `DUCKDNS_TOKEN` | DuckDNS API token |
+
+## ⚙️ Workflow Order (first-time setup)
+
+Run these workflows manually, in this exact order, before using `spin-up.yml` day to day:
+
+1. **`setup-backend.yml`** — creates the resource group + storage account/container for the Terraform state, **and** creates the persistent `AZURE_SNAPSHOT_RESOURCE_GROUP`. Run once per environment.
+2. **`spin-up.yml`** — provisions the VM and Moodle via Terraform + cloud-init.
+3. **`create-snapshot.yml`** — takes a disk snapshot for backup, whenever you need one.
+4. **`teardown.yml`** — destroys the VM environment (runs automatically every night via cron, or manually).
+
+## 💾 Snapshots & Backups
+
+Snapshots are stored in a **separate, persistent resource group** (`AZURE_SNAPSHOT_RESOURCE_GROUP`), independent from the resource group Terraform manages (`AZURE_RESOURCE_GROUP_VM`).
+
+**Why:** the `azurerm` Terraform provider defaults to `prevent_deletion_if_contains_resources = true`, which blocks deleting a resource group if it contains resources Terraform doesn't manage. Since `az snapshot create` is run outside Terraform (via Azure CLI), a snapshot left inside the VM's resource group causes `terraform destroy` to fail with:
+
+```
+Error: deleting Resource Group "...": the Resource Group still contains Resources.
+```
+
+Keeping snapshots in their own resource group avoids this conflict entirely, and — as a bonus — means backups survive even after the ephemeral VM environment is torn down.
+
+**Troubleshooting:** if you hit the error above, check that `create-snapshot.yml` is targeting `AZURE_SNAPSHOT_RESOURCE_GROUP` (not `AZURE_RESOURCE_GROUP_VM`), and that this resource group was created via `setup-backend.yml` before the first snapshot was taken.
+
 ## 📖 Use Cases
 - **Testing and Development**: Set up a Moodle environment for testing new features, plugins, and configurations without affecting production.
 - **Educational Purposes**: Use the infrastructure as a learning tool for students and educators to understand cloud infrastructure and Moodle deployment.
