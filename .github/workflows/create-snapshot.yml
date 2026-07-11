@@ -20,9 +20,17 @@ jobs:
 
       - name: Create snapshot of staging database
         run: |
-          az snapshot create \
-            --name ${{ secrets.AZURE_SNAPSHOT_NAME }} \
+          # El snapshot vive en su PROPIO resource group (persistente),
+          # separado del RG que Terraform destruye. Por eso usamos el
+          # resource ID completo del disco como --source, no solo el nombre:
+          DISK_ID=$(az disk show \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_VM }} \
-            --source ${{ secrets.AZURE_DISK_NAME }} \
-            --location ${{ secrets.AZURE_REGION }}
-          echo "Snapshot created successfully"
+            --name ${{ secrets.AZURE_DISK_NAME }} \
+            --query id -o tsv)
+      
+            az snapshot create \
+              --name ${{ secrets.AZURE_SNAPSHOT_NAME }} \
+              --resource-group ${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }} \
+              --source "$DISK_ID" \
+              --location ${{ secrets.AZURE_REGION }}
+            echo "Snapshot created successfully in $AZURE_SNAPSHOT_RESOURCE_GROUP"
