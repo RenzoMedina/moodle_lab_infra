@@ -87,8 +87,44 @@ resource "azurerm_network_interface_security_group_association" "nsg_assoc" {
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
+resource "azurerm_managed_disk" "from_snapshot" {
+  count = var.use_snapshots ? 1 : 0
+  name = "moodle-lab-disk-restored"
+  location = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  storage_account_type = "Standard_LRS"
+  os_type = "Linux"
+  create_option = "Copy"
+  source_resource_id = var.snapshot_id
+}
+
+resource "azurerm_virtual_machine" "vm_from_snapshot" {
+  count = var.use_snapshots ? 1 : 0
+  name = var.vm_name
+  location = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  network_interface_ids = [
+    azurerm_network_interface.nic.id
+  ]
+  vm_size = var.vm_size
+
+  delete_os_disk_on_termination = true
+  delete_data_disks_on_termination = true
+
+  storage_os_disk {
+    name = azurerm_managed_disk.from_snapshot[0].name
+    managed_disk_id = azurerm_managed_disk.from_snapshot[0].id
+    create_option = "Attach"
+    os_type = "Linux"
+  }
+  tags = {
+    environment = "staging"
+    project     = "MoodleLab"
+  }
+}
 
 resource "azurerm_linux_virtual_machine" "vm" {
+  count = var.use_snapshots ? 1 : 0
   name                = var.vm_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location

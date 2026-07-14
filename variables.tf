@@ -46,6 +46,12 @@ variable "use_snapshots" {
   default     = false
 }
 
+variable "snapshot_id" {
+  description = "Resource ID of the snapshot to restore (required if use_snapshots = true)"
+  type        = string
+  default     = ""
+}
+
 variable "moodle_branch" {
   description = "Moodle-lab branch to be deployed"
   type        = string
