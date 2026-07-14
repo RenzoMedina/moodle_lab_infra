@@ -100,7 +100,7 @@ resource "azurerm_managed_disk" "from_snapshot" {
   depends_on = [time_sleep.wait_disk_detach]
 }
 
-resource "time_sleep" "wait_disk_detach" {
+resource "time_sleep" "wait_after_disk_create" {
   count            = var.use_snapshots ? 1 : 0
   depends_on       = [azurerm_managed_disk.from_snapshot]
   destroy_duration = "30s"
@@ -141,7 +141,7 @@ resource "azurerm_virtual_machine" "vm_from_snapshot" {
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
-  count               = var.use_snapshots ? 1 : 0
+  count               = var.use_snapshots ? 0 : 1
   name                = var.vm_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
