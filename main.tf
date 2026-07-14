@@ -96,8 +96,6 @@ resource "azurerm_managed_disk" "from_snapshot" {
   os_type              = "Linux"
   create_option        = "Copy"
   source_resource_id   = var.snapshot_id
-
-  depends_on = [time_sleep.wait_disk_detach]
 }
 
 resource "time_sleep" "wait_after_disk_create" {
