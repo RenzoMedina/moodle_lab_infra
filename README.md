@@ -72,6 +72,7 @@ Before running any workflow, configure these secrets in **Settings → Secrets a
 | `SSH_PUBLIC_KEY` | SSH public key injected into the VM |
 | `DUCKDNS_DOMAIN` | DuckDNS subdomain |
 | `DUCKDNS_TOKEN` | DuckDNS API token |
+| `MOODLE_DB_PASSWORD` | Moodle database user password |
 
 ## ⚙️ Workflow Order (first-time setup)
 
