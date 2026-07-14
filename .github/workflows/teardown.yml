@@ -51,9 +51,9 @@ jobs:
         if: env.VM_STATE != 'NotFound'
         run: terraform init
       
-      - name: Force unlock (temporal)
-        if: env.VM_STATE != 'NotFound'
-        run: terraform force-unlock -force 280608ba-5f3a-4b7d-0bf6-1bd219a91b49
+      #- name: Force unlock (temporal)
+      # zif: env.VM_STATE != 'NotFound'
+      #  run: terraform force-unlock -force 280608ba-5f3a-4b7d-0bf6-1bd219a91b49
         
       - name: Terraform Destroy
         if: env.VM_STATE != 'NotFound'
