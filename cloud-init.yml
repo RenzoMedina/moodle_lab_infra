@@ -106,7 +106,7 @@ runcmd:
 
 # Clonar Moodle
 - echo "[LOG] Clonando Moodle" | tee -a /var/log/cloud-init-moodle.log
-- - git clone --recurse-submodules --branch ${moodle_branch} https://github.com/RenzoMedina/moodle-lab.git /var/www/moodle >> /var/log/cloud-init-moodle.log 2>&1
+- git clone --recurse-submodules --branch ${moodle_branch} https://github.com/RenzoMedina/moodle-lab.git /var/www/moodle >> /var/log/cloud-init-moodle.log 2>&1
 
 # Permisos previos a la instalación
 - echo "[LOG] Creando moodledata y ajustando permisos" | tee -a /var/log/cloud-init-moodle.log
