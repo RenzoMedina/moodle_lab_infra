@@ -27,6 +27,7 @@ jobs:
       TF_VAR_duckdns_token: ${{ secrets.DUCKDNS_TOKEN }}
       TF_VAR_use_snapshots: ${{ github.event.inputs.use_snapshots }}
       TF_VAR_snapshot_name: ${{ secrets.AZURE_SNAPSHOT_NAME }}
+      TF_VAR_moodle_db_password: ${{ secrets.MOODLE_DB_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5

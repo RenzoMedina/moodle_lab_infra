@@ -45,3 +45,27 @@ variable "use_snapshots" {
   type        = bool
   default     = false
 }
+
+variable "moodle_branch" {
+  description = "Moodle-lab branch to be deployed"
+  type        = string
+  default     = "main"
+}
+
+variable "moodle_db_name" {
+  description = "Database Branch Name"
+  type        = string
+  default     = "moodle"
+}
+
+variable "moodle_db_user" {
+  description = "Moodle Database User"
+  type        = string
+  default     = "moodleuser"
+}
+
+variable "moodle_db_password" {
+  description = "Moodle database user password"
+  type        = string
+  sensitive   = true
+}

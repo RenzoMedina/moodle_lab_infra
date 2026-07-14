@@ -116,8 +116,12 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yml", {
-    duckdns_domain = var.duckdns_domain
-    duckdns_token  = var.duckdns_token
+    duckdns_domain     = var.duckdns_domain
+    duckdns_token      = var.duckdns_token
+    moodle_branch      = var.moodle_branch
+    moodle_db_name     = var.moodle_db_name
+    moodle_db_user     = var.moodle_db_user
+    moodle_db_password = var.moodle_db_password
   }))
 
   tags = {
