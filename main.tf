@@ -86,6 +86,11 @@ resource "azurerm_network_interface_security_group_association" "nsg_assoc" {
   network_interface_id      = azurerm_network_interface.nic.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
+resource "time_sleep" "wait_disk_detach" {
+  count           = var.use_snapshots ? 1 : 0
+  depends_on      = [azurerm_virtual_machine.vm_from_snapshot]
+  destroy_duration = "30s"
+}
 
 resource "azurerm_managed_disk" "from_snapshot" {
   count                = var.use_snapshots ? 1 : 0
@@ -96,6 +101,8 @@ resource "azurerm_managed_disk" "from_snapshot" {
   os_type              = "Linux"
   create_option        = "Copy"
   source_resource_id   = var.snapshot_id
+
+  depends_on = [time_sleep.wait_disk_detach]
 }
 
 resource "azurerm_virtual_machine" "vm_from_snapshot" {
@@ -123,7 +130,7 @@ resource "azurerm_virtual_machine" "vm_from_snapshot" {
       azurerm_managed_disk.from_snapshot[0].id
     ]
   }
-  
+
   tags = {
     environment = "staging"
     project     = "MoodleLab"

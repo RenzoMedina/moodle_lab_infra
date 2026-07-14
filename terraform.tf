@@ -5,6 +5,11 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.117.0"
     }
+    
+    time = {
+    source  = "hashicorp/time"
+    version = "~> 0.11"
+    }
   }
 
   required_version = ">= 1.1.0"
