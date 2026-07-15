@@ -7,6 +7,27 @@ jobs:
   snapshot:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate required secrets
+        run: |
+          missing=0
+          for var in AZURE_RESOURCE_GROUP_VM AZURE_DISK_NAME AZURE_SNAPSHOT_NAME AZURE_SNAPSHOT_RESOURCE_GROUP AZURE_REGION; do
+            if [ -z "${!var}" ]; then
+              echo "❌ Falta el secret: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Uno o más secrets requeridos no están configurados. Abortando."
+            exit 1
+          fi
+          echo "✅ Todos los secrets requeridos están presentes."
+        env:
+          AZURE_RESOURCE_GROUP_VM: ${{ secrets.AZURE_RESOURCE_GROUP_VM }}
+          AZURE_DISK_NAME: ${{ secrets.AZURE_DISK_NAME }}
+          AZURE_SNAPSHOT_NAME: ${{ secrets.AZURE_SNAPSHOT_NAME }}
+          AZURE_SNAPSHOT_RESOURCE_GROUP: ${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }}
+          AZURE_REGION: ${{ secrets.AZURE_REGION }}
+
       - name: Az login
         uses: azure/login@v3
         with:
@@ -18,19 +39,49 @@ jobs:
               "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
             }
 
-      - name: Create snapshot of staging database
+      - name: Ensure snapshot resource group exists
         run: |
-          # El snapshot vive en su PROPIO resource group (persistente),
-          # separado del RG que Terraform destruye. Por eso usamos el
-          # resource ID completo del disco como --source, no solo el nombre:
+          az group create \
+            --name "${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }}" \
+            --location "${{ secrets.AZURE_REGION }}"
+
+      - name: Get source disk ID
+        id: disk
+        run: |
           DISK_ID=$(az disk show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_VM }} \
-            --name ${{ secrets.AZURE_DISK_NAME }} \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP_VM }}" \
+            --name "${{ secrets.AZURE_DISK_NAME }}" \
             --query id -o tsv)
-      
-            az snapshot create \
-              --name ${{ secrets.AZURE_SNAPSHOT_NAME }} \
-              --resource-group ${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }} \
-              --source "$DISK_ID" \
-              --location ${{ secrets.AZURE_REGION }}
-            echo "Snapshot created successfully in $AZURE_SNAPSHOT_RESOURCE_GROUP"
+
+          if [ -z "$DISK_ID" ]; then
+            echo "❌ No se pudo resolver el ID del disco. Verifica AZURE_RESOURCE_GROUP_VM y AZURE_DISK_NAME."
+            exit 1
+          fi
+
+          echo "Disk ID resuelto correctamente."
+          echo "disk_id=$DISK_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Delete existing snapshot (if any)
+        run: |
+          EXISTS=$(az snapshot show \
+            --resource-group "${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }}" \
+            --name "${{ secrets.AZURE_SNAPSHOT_NAME }}" \
+            --query id -o tsv 2>/dev/null || echo "")
+
+          if [ -n "$EXISTS" ]; then
+            echo "Snapshot existente encontrado, eliminando antes de recrear..."
+            az snapshot delete \
+              --resource-group "${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }}" \
+              --name "${{ secrets.AZURE_SNAPSHOT_NAME }}"
+          else
+            echo "No hay snapshot previo con ese nombre, se creará uno nuevo."
+          fi
+
+      - name: Create snapshot
+        run: |
+          az snapshot create \
+            --name "${{ secrets.AZURE_SNAPSHOT_NAME }}" \
+            --resource-group "${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }}" \
+            --source "${{ steps.disk.outputs.disk_id }}" \
+            --location "${{ secrets.AZURE_REGION }}"
+          echo "✅ Snapshot creado exitosamente en ${{ secrets.AZURE_SNAPSHOT_RESOURCE_GROUP }}"
