@@ -4,6 +4,74 @@ Historial de cambios sobre la infraestructura Terraform + GitHub Actions para Mo
 
 ---
 
+## [1.0.1]
+
+### Added — Restauración desde snapshot (fixes posteriores a v1.0.0)
+- `time_sleep.wait_after_disk_create` en `main.tf`: espera 30s en el `destroy` entre eliminar la VM y eliminar el disco restaurado, evitando el conflicto 409 "disco todavía adjunto" por consistencia eventual de la API de Azure.
+- `lifecycle { replace_triggered_by = [azurerm_managed_disk.from_snapshot[0].id] }` en `azurerm_virtual_machine.vm_from_snapshot`: fuerza el reemplazo completo de la VM (no un update in-place, que Azure rechaza) cuando cambia el disco restaurado.
+- Provider `hashicorp/time ~> 0.11` agregado en `terraform.tf`.
+- `create-snapshot.yml` reescrito con: validación explícita de secrets requeridos, `az group create` idempotente del RG de snapshots (auto-suficiente, no depende de `setup-backend.yml`), y borrado del snapshot anterior antes de crear uno nuevo (los snapshots de Azure tienen `CreationData` inmutable — no se pueden "sobrescribir" con `az snapshot create` sobre un nombre existente).
+- **`cloud-init.yml` hecho idempotente**: los bloques de "clonar Moodle" y "forzar wizard" ahora verifican `if [ ! -d /var/www/moodle ]` / `if [ ! -f /var/www/moodle/config.php ]` antes de ejecutarse. Esto neutraliza el efecto de un bug de cloud-init que se re-dispara solo en ciertos boots (aún sin causa raíz confirmada) sin romper la instalación existente.
+- Swap de 2GB agregado manualmente a la VM de prueba (`/swapfile`) — la VM `Standard_B1ms` (2GB RAM) se queda muy justa corriendo Nginx + PHP-FPM + MySQL a la vez. **Pendiente**: agregar esto al `cloud-init.yml` para que sea permanente en cada instalación limpia.
+
+### Fixed (posteriores a v1.0.0)
+- **Ciclo de dependencias en Terraform** (`Cycle: azurerm_managed_disk.from_snapshot, time_sleep...`): el `time_sleep` y el `managed_disk` se referenciaban mutuamente vía `depends_on`. Corregido: el orden correcto es disco → `time_sleep` → VM (nunca al revés).
+- **`count` invertido en `azurerm_linux_virtual_machine.vm`**: tenía `var.use_snapshots ? 1 : 0` (al revés), causando que con `use_snapshots=true` se creara la VM equivocada (la de cloud-init limpio, en vez de la restaurada). Corregido a `? 0 : 1`.
+- **409 Conflict `osDisk.createOption` no se puede cambiar**: al reintentar un `apply` sobre una VM ya existente con disco distinto. Resuelto con `lifecycle.replace_triggered_by` (ver arriba).
+- **409 al destruir el disco restaurado** (`Disk is being attached to VM`): consistencia eventual de Azure. Resuelto con `time_sleep` de 30s en el destroy. Alternativa si persiste: reintentar el `destroy` una vez más.
+- **SSH `Host key verification failed`**: al recrear la VM repetidamente con el mismo dominio DuckDNS, cada VM nueva genera claves de host SSH distintas. Solución aplicada: entrada en `~/.ssh/config` con `StrictHostKeyChecking no` y `UserKnownHostsFile /dev/null` específica para `moodlelab.duckdns.org`.
+- **`Permission denied (publickey)`**: la llave SSH usada tenía nombre custom (`moodlelab`/`moodlelab.pub`), no el nombre por defecto que el cliente SSH prueba automáticamente. Resuelto agregando `IdentityFile` explícito en `~/.ssh/config`.
+- **Contraseña de admin corrupta tras restaurar snapshot** (`$6$rounds=...` en `mdl_user.password`, formato SHA-512 crypt en vez del bcrypt `$2y$...` normal de Moodle): causado por el mismo bug de cloud-init re-disparándose sin protección, antes de aplicar el fix idempotente. Resuelto puntualmente con `admin/cli/reset_password.php` (ver runbook abajo). Con el fix idempotente ya aplicado, no debería repetirse — validado en un ciclo de `spin-up` limpio donde cloud-init se re-disparó pero el guard evitó tocar `config.php`/la base de datos.
+
+### 🐛 Bug conocido, sin causa raíz confirmada: cloud-init se re-dispara solo
+Se observó (vía `journalctl`) que cloud-init ejecuta el `runcmd` completo más de una vez dentro del mismo ciclo de vida de una VM (ej. a los ~32 minutos del primer boot), sin relación aparente a un reboot manual. Ocurre tanto en VMs restauradas desde snapshot como en instalaciones limpias. Confirmado que **no es un bug de Terraform** (el `plan`/`apply` muestran exactamente los recursos esperados). Con el fix idempotente del `cloud-init.yml`, este re-disparo ya no es destructivo, pero la causa raíz sigue sin confirmarse (hipótesis: comportamiento de WALinuxAgent/datasource de Azure re-evaluando la instancia). Queda como investigación pendiente, sin urgencia.
+
+### 🛠️ Runbook — comandos operativos
+
+**Antes de tomar un snapshot (siempre, para evitar capturar el disco con datos a medio escribir):**
+```bash
+ssh moodlelab.duckdns.org
+sudo systemctl stop nginx
+sudo systemctl stop php8.1-fpm
+sudo systemctl stop mysql
+
+# confirmar que quedaron detenidos:
+sudo systemctl status nginx php8.1-fpm mysql
+```
+Recién con los 3 en `inactive (dead)`, correr `create-snapshot.yml`. Después, si se quiere seguir usando la VM:
+```bash
+sudo systemctl start mysql
+sudo systemctl start php8.1-fpm
+sudo systemctl start nginx
+```
+
+**Si el login de Moodle da "contraseña incorrecta" (aunque la contraseña sea la correcta):**
+```bash
+ssh moodlelab.duckdns.org
+cd /var/www/moodle
+sudo -u www-data /usr/bin/php admin/cli/reset_password.php --username=admin --password='TuNuevaPassword123!' --ignore-password-policy
+```
+El flag `--ignore-password-policy` es necesario si la nueva contraseña no cumple las reglas de complejidad por defecto de Moodle (mínimo de dígitos, mayúsculas, símbolos). Alternativa 100% interactiva (no deja la contraseña en el historial de bash):
+```bash
+cd /var/www/moodle
+sudo -u www-data /usr/bin/php admin/cli/reset_password.php
+```
+Pregunta el username y luego la nueva contraseña (oculta al escribir). Esto re-hashea la contraseña con el mecanismo correcto de Moodle, sin importar qué haya quedado corrupto en la base de datos.
+
+**Variante equivalente, confirmada funcionando (ruta absoluta, sin necesidad de `cd` primero):**
+```bash
+sudo -u www-data php /var/www/moodle/admin/cli/reset_password.php --username=admin --password='TuNuevaPassword123!' --ignore-password-policy
+```
+
+**Para confirmar si cloud-init se re-disparó solo en el boot actual (diagnóstico del bug de arriba):**
+```bash
+ssh moodlelab.duckdns.org
+sudo journalctl --no-pager | grep -i "Forzando wizard\|Clonando Moodle\|Configurando base de datos"
+```
+Si aparecen estos mensajes más de una vez con timestamps distintos, confirma que cloud-init volvió a correr el `runcmd` completo dentro del mismo ciclo de vida de la VM. Con el fix idempotente aplicado, esto ya no debería ser destructivo, pero sirve para monitorear si el comportamiento sigue ocurriendo.
+
+---
+
 ## [v1.0.0]
 
 ### Added
@@ -48,3 +116,7 @@ Historial de cambios sobre la infraestructura Terraform + GitHub Actions para Mo
 - [ ] Fix del error `Primary script unknown` en Nginx (agregar `try_files $uri =404;` antes del `fastcgi_pass`).
 - [ ] Evaluar si `Standard_B1ms` es suficiente a largo plazo o conviene subir a `Standard_B2s` de forma permanente.
 - [ ] `.gitignore` en `moodle-lab` para no versionar `config.php` ni `moodledata/`.
+- [ ] Validar el ciclo completo con `use_snapshots=true` (detener servicios → snapshot → teardown → spin-up con `true`) para confirmar que el fix idempotente cubre igual de bien ese escenario.
+- [ ] Investigar la causa raíz de por qué cloud-init se re-dispara solo (sin urgencia, ya no es destructivo).
+- [ ] Agregar el swapfile de forma permanente en `cloud-init.yml`.
+- [ ] Reactivar el cron de `teardown.yml` una vez estabilizado el flujo (si quedó comentado).
